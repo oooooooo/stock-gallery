@@ -15,7 +15,7 @@ cat chart.json | go run cmd/chart/main.go > docs/index.html
 
 ## Demo
 
-<>
+<https://oooooooo.github.io/stock-gallery/>
 
 ## License
 
