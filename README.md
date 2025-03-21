@@ -1,19 +1,22 @@
-## 概要
+# Stock Gallery
 
-指定銘柄コードの 5 年チャートを表示。買い時、売り時を知るために。
+## About
 
-Yahoo! ファイナンスのチャート図を並べて表示するだけ。自分には地味に便利。
+Display a 5-year chart for a specified stock code to identify the best times to buy or sell.
 
-## デモ
+This tool simply arranges and displays charts from Yahoo! Finance. It’s simple but surprisingly useful for me.
 
-[デモ](https://oooooooo.github.io/stock-gallery/?code=998407.O,9501.T,7974.T,7203.T,7201.T,7267.T,6758.T,6502.T,8306.T,8411.T,9202.T,3778.T,9449.T,9064.T,3382.T,9020.T)
+## Usage
 
-## 特徴
+```shell
+go run cmd/fetch/main.go 9064.T,7203.T,6752.T,9501.T,8136.T,9064.T,2220.T,5253.T,5032.T,4661.T,9432.T,3778.T > chart.json
+cat chart.json | go run cmd/chart/main.go
+```
 
-- HTML + JavaScript のみ。GitHub Pages でも動く
-- 一ファイルのみ。jQuery といった外部依存なし
-- レスポンシブ。PC でもモバイルでも
+## Demo
 
-## ライセンス
+<>
+
+## License
 
 MIT
