@@ -18,15 +18,18 @@ jobs:
         with:
           go-version: '1.24'
 
-      - name: Create docs directory
-        run: mkdir -p docs
-
       - name: Generate index.html
         run: |
+          mkdir -p docs
           go run cmd/fetch/main.go 9064.T,7203.T,6752.T,9501.T,8136.T,9064.T,2220.T,5253.T,5032.T,4661.T,9432.T,3778.T,3382.T | go run cmd/chart/main.go > docs/index.html
 
-      - name: List docs directory
-        run: ls -la docs/
+      - name: Commit index.html
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add docs/index.html
+          git commit -m "Update index.html"
+          git push
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -35,4 +38,3 @@ jobs:
           publish_dir: ./docs
           publish_branch: gh-pages
           commit_message: "Update index.html"
-          force: true
