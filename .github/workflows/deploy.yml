@@ -1,33 +1,30 @@
-name: Deploy Chart to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 16 * * *'
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.24'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
 
-    - name: Run fetch and chart
-      run: |
-        go run cmd/fetch/main.go 9064.T,7203.T,6752.T,9501.T,8136.T,9064.T,2220.T,5253.T,5032.T,4661.T,9432.T,3778.T | go run cmd/chart/main.go > index.html
+      - name: Generate index.html
+        run: |
+          go run cmd/fetch/main.go 9064.T,7203.T,6752.T,9501.T,8136.T,9064.T,2220.T,5253.T,5032.T,4661.T,9432.T,3778.T,3382.T | go run cmd/chart/main.go > docs/index.html
 
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./
-        publish_branch: gh-pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
