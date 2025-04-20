@@ -23,13 +23,14 @@ jobs:
           mkdir -p docs
           go run cmd/fetch/main.go 9064.T,7203.T,6752.T,9501.T,8136.T,9064.T,2220.T,5253.T,5032.T,4661.T,9432.T,3778.T,3382.T | go run cmd/chart/main.go > docs/index.html
 
-      - name: Commit index.html
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git add docs/index.html
-          git commit -m "Update index.html"
-          git push
+      - name: Upload index.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: my_site
+          path: docs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
