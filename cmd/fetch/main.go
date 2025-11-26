@@ -85,40 +85,49 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 			return nil, fmt.Errorf("error decoding JSON: %v", err)
 		}
 
-		var data []StockData
-
-		if len(yahooResp.Chart.Result) == 0 {
-			return nil, fmt.Errorf("no data found for %s", symbol)
+		stockInfo, err := parseYahooResponse(symbol, yahooResp)
+		if err != nil {
+			return nil, err
 		}
 
-		result := yahooResp.Chart.Result[0]
-		longName := result.Meta.LongName
-
-		if longName == "" {
-			longName = symbol
-		}
-
-		quote := result.Indicators.Quote[0]
-
-		for i, ts := range result.Timestamp {
-			date := time.Unix(ts, 0).Format("2006-01")
-
-			if len(quote.Low) <= i || len(quote.High) <= i || len(quote.Volume) <= i {
-				continue
-			}
-
-			data = append(data, StockData{
-				Date:   date,
-				Low:    quote.Low[i],
-				High:   quote.High[i],
-				Volume: quote.Volume[i],
-			})
-		}
-
-		return []StockInfo{{Name: longName, Data: data}}, nil
+		return stockInfo, nil
 	}
 
 	return nil, fmt.Errorf("failed to fetch data for %s after multiple retries", symbol)
+}
+
+func parseYahooResponse(symbol string, yahooResp YahooResponse) ([]StockInfo, error) {
+	if len(yahooResp.Chart.Result) == 0 {
+		return nil, fmt.Errorf("no data found for %s", symbol)
+	}
+
+	result := yahooResp.Chart.Result[0]
+	longName := result.Meta.LongName
+
+	if longName == "" {
+		longName = symbol
+	}
+
+	quote := result.Indicators.Quote[0]
+
+	data := make([]StockData, 0, len(result.Timestamp))
+
+	for i, ts := range result.Timestamp {
+		date := time.Unix(ts, 0).Format("2006-01")
+
+		if len(quote.Low) <= i || len(quote.High) <= i || len(quote.Volume) <= i {
+			continue
+		}
+
+		data = append(data, StockData{
+			Date:   date,
+			Low:    quote.Low[i],
+			High:   quote.High[i],
+			Volume: quote.Volume[i],
+		})
+	}
+
+	return []StockInfo{{Name: longName, Data: data}}, nil
 }
 
 func main() {
