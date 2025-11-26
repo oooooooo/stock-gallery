@@ -10,8 +10,13 @@ import (
 	"time"
 )
 
-const yahooFinanceURL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=5y&interval=1mo"
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+const (
+	minArgs       = 2
+	retryInterval = 5 * time.Second
+	userAgent     = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+		"Chrome/142.0.0.0 Safari/537.36"
+	yahooFinanceURL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=5y&interval=1mo"
+)
 
 type StockData struct {
 	Date   string
@@ -49,10 +54,11 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 	client := &http.Client{}
 
 	for attempt := 1; attempt <= 3; attempt++ {
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %v", err)
 		}
+
 		req.Header.Set("User-Agent", userAgent)
 
 		resp, err := client.Do(req)
@@ -61,13 +67,16 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode == 429 {
-			fmt.Println("HTTP 429 Too Many Requests - Retrying in 5 seconds...")
-			time.Sleep(5 * time.Second)
+		if resp.StatusCode == http.StatusTooManyRequests {
+			fmt.Println("HTTP", http.StatusTooManyRequests, "Too Many Requests - Retrying in", retryInterval, "seconds...")
+			time.Sleep(retryInterval)
+
 			continue
 		}
+
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
+
 			return nil, fmt.Errorf("error: HTTP Status %d\nResponse body: %s", resp.StatusCode, string(body))
 		}
 
@@ -77,22 +86,27 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 		}
 
 		var data []StockData
+
 		if len(yahooResp.Chart.Result) == 0 {
 			return nil, fmt.Errorf("no data found for %s", symbol)
 		}
 
 		result := yahooResp.Chart.Result[0]
 		longName := result.Meta.LongName
+
 		if longName == "" {
 			longName = symbol
 		}
+
 		quote := result.Indicators.Quote[0]
 
 		for i, ts := range result.Timestamp {
 			date := time.Unix(ts, 0).Format("2006-01")
+
 			if len(quote.Low) <= i || len(quote.High) <= i || len(quote.Volume) <= i {
 				continue
 			}
+
 			data = append(data, StockData{
 				Date:   date,
 				Low:    quote.Low[i],
@@ -100,6 +114,7 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 				Volume: quote.Volume[i],
 			})
 		}
+
 		return []StockInfo{{Name: longName, Data: data}}, nil
 	}
 
@@ -107,7 +122,7 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) < minArgs {
 		fmt.Println("Usage: go run fetch_stock.go <symbol1,symbol2,symbol3>")
 		os.Exit(1)
 	}
@@ -119,6 +134,7 @@ func main() {
 		data, err := fetchStockData(symbol)
 		if err != nil {
 			fmt.Printf("Error fetching data for %s: %v\n", symbol, err)
+
 			continue
 		}
 
@@ -131,5 +147,6 @@ func main() {
 		fmt.Printf("Failed to encode stockDataMap as JSON: %v\n", err)
 		os.Exit(1)
 	}
+
 	fmt.Println(string(jsonData))
 }
