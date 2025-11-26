@@ -1,0 +1,8 @@
+{
+  "main": {
+    "allow": [
+	    "github.com/guptarohit/asciigraph",
+      "stock/pkg/types"
+	  ]
+  }
+}
