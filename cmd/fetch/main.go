@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -68,7 +69,8 @@ func fetchStockData(symbol string) ([]StockInfo, error) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusTooManyRequests {
-			fmt.Println("HTTP", http.StatusTooManyRequests, "Too Many Requests - Retrying in", retryInterval, "seconds...")
+			// stdout carries the JSON, so progress goes to stderr
+			fmt.Fprintln(os.Stderr, "HTTP", http.StatusTooManyRequests, "Too Many Requests - Retrying in", retryInterval)
 			time.Sleep(retryInterval)
 
 			continue
@@ -130,19 +132,19 @@ func parseYahooResponse(symbol string, yahooResp YahooResponse) ([]StockInfo, er
 	return []StockInfo{{Name: longName, Data: data}}, nil
 }
 
-func main() {
-	if len(os.Args) < minArgs {
-		fmt.Println("Usage: go run fetch_stock.go <symbol1,symbol2,symbol3>")
-		os.Exit(1)
+// run writes the JSON of every symbol that could be fetched to stdout.
+// A symbol that fails is reported on stderr and left out, so stdout stays valid JSON.
+func run(args []string, stdout, stderr io.Writer, fetch func(string) ([]StockInfo, error)) error {
+	if len(args) < minArgs {
+		return errors.New("usage: fetch <symbol1,symbol2,symbol3>")
 	}
 
 	stockDataMap := make(map[string][]StockInfo)
 
-	symbols := strings.Split(os.Args[1], ",")
-	for _, symbol := range symbols {
-		data, err := fetchStockData(symbol)
+	for symbol := range strings.SplitSeq(args[1], ",") {
+		data, err := fetch(symbol)
 		if err != nil {
-			fmt.Printf("Error fetching data for %s: %v\n", symbol, err)
+			fmt.Fprintf(stderr, "Error fetching data for %s: %v\n", symbol, err)
 
 			continue
 		}
@@ -153,9 +155,18 @@ func main() {
 
 	jsonData, err := json.MarshalIndent(stockDataMap, "", "  ")
 	if err != nil {
-		fmt.Printf("Failed to encode stockDataMap as JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to encode stockDataMap as JSON: %w", err)
 	}
 
-	fmt.Println(string(jsonData))
+	_, err = fmt.Fprintln(stdout, string(jsonData))
+
+	return err
+}
+
+func main() {
+	err := run(os.Args, os.Stdout, os.Stderr, fetchStockData)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
