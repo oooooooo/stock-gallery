@@ -13,6 +13,13 @@ go run cmd/fetch/main.go 9064.T,7203.T,6752.T,9501.T,8136.T,9064.T,2220.T,5253.T
 cat chart.json | go run cmd/chart/main.go > docs/index.html
 ```
 
+To get the same charts as one PNG image, for places that cannot run
+JavaScript such as Slack:
+
+```shell
+go run ./cmd/png < chart.json > chart.png
+```
+
 ## Demo
 
 <https://oooooooo.github.io/stock-gallery/>
