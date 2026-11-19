@@ -2,6 +2,7 @@
 // cannot run the JavaScript charts of the web page, such as Slack.
 //
 //	go run ./cmd/fetch 7203.T,9432.T | go run ./cmd/png > chart.png
+//	go run ./cmd/fetch 7203.T,9432.T | go run ./cmd/png -columns 2 > chart.png
 package main
 
 import (
@@ -18,9 +19,13 @@ import (
 	stock "stock/pkg/types"
 )
 
+// defaultColumns keeps the four columns that cmd/png drew before -columns existed.
+const defaultColumns = 4
+
 func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	date := flags.String("date", time.Now().Format(time.DateOnly), "the date shown in the header")
+	columns := flags.Int("columns", defaultColumns, "the number of charts in a row")
 
 	err := flags.Parse(args[1:])
 	if err != nil {
@@ -34,7 +39,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
-	img, err := render.Render(stocks, *date)
+	img, err := render.Render(stocks, *date, *columns)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}

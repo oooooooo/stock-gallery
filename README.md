@@ -20,6 +20,10 @@ JavaScript such as Slack:
 go run ./cmd/png < chart.json > chart.png
 ```
 
+The charts are in four columns; `-columns` sets another number.
+Each chart keeps its size, so fewer columns help where the image is
+shrunk to a fixed width, as Slack does.
+
 ## Demo
 
 <https://oooooooo.github.io/stock-gallery/>

@@ -94,7 +94,13 @@ func stocksOf(count int) map[string][]stock.StockInfo {
 func mustRender(t *testing.T, count int) image.Image {
 	t.Helper()
 
-	img, err := render.Render(stocksOf(count), "2026-10-30")
+	return mustRenderIn(t, count, 4)
+}
+
+func mustRenderIn(t *testing.T, count, columns int) image.Image {
+	t.Helper()
+
+	img, err := render.Render(stocksOf(count), "2026-10-30", columns)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +122,72 @@ func TestRenderPutsFourPanelsInARow(t *testing.T) {
 	}
 }
 
+func TestRenderPutsTheGivenNumberOfPanelsInARow(t *testing.T) {
+	t.Parallel()
+
+	one, two, three, four := mustRenderIn(t, 1, 2), mustRenderIn(t, 2, 2), mustRenderIn(t, 3, 2), mustRenderIn(t, 4, 2)
+
+	if one.Bounds() != two.Bounds() {
+		t.Fatalf("two stocks (%v) do not fit the row of one (%v) in two columns", two.Bounds(), one.Bounds())
+	}
+
+	if three.Bounds() != four.Bounds() || four.Bounds().Dy() <= two.Bounds().Dy() {
+		t.Fatalf("four stocks (%v) are not two rows of two columns: two stocks are %v, three %v",
+			four.Bounds(), two.Bounds(), three.Bounds())
+	}
+
+	// 2 margins of 24 px and 2 panels of 640 px; a header of 72 px, 2 rows of 360 px and a margin
+	if want := image.Rect(0, 0, 1328, 816); four.Bounds() != want {
+		t.Fatalf("four stocks in two columns are %v, want %v", four.Bounds(), want)
+	}
+}
+
+func TestRenderDrawsEveryPanelInsideTwoColumns(t *testing.T) {
+	t.Parallel()
+
+	img := mustRenderIn(t, 4, 2)
+	bounds := img.Bounds()
+	middleX, middleY := bounds.Dx()/2, 72+360
+
+	for name, quadrant := range map[string]image.Rectangle{
+		"top left":     image.Rect(0, 72, middleX, middleY),
+		"top right":    image.Rect(middleX, 72, bounds.Dx(), middleY),
+		"bottom left":  image.Rect(0, middleY, middleX, bounds.Dy()),
+		"bottom right": image.Rect(middleX, middleY, bounds.Dx(), bounds.Dy()),
+	} {
+		sub, ok := img.(interface {
+			SubImage(r image.Rectangle) image.Image
+		})
+		if !ok {
+			t.Fatal("the image cannot be cut into quadrants")
+		}
+
+		if got := countColor(sub.SubImage(quadrant), render.HighColor); got < 100 {
+			t.Errorf("the %s panel has %d pixels of the high line, want a chart", name, got)
+		}
+	}
+}
+
+func TestRenderOfFourStocksInTwoColumnsIsLandscape(t *testing.T) {
+	t.Parallel()
+
+	// Slack shows a landscape image larger in the timeline than a portrait one
+	if bounds := mustRenderIn(t, 4, 2).Bounds(); bounds.Dx() <= bounds.Dy() {
+		t.Fatalf("4 stocks in two columns are %dx%d, want wider than tall", bounds.Dx(), bounds.Dy())
+	}
+}
+
+func TestRenderWithoutColumnsFails(t *testing.T) {
+	t.Parallel()
+
+	for _, columns := range []int{0, -1} {
+		_, err := render.Render(stocksOf(1), "2026-10-30", columns)
+		if err == nil {
+			t.Errorf("Render in %d columns returned nil", columns)
+		}
+	}
+}
+
 func TestRenderOfTwelveStocksIsLandscape(t *testing.T) {
 	t.Parallel()
 
@@ -132,7 +204,7 @@ func TestRenderDrawsHighLowAndVolume(t *testing.T) {
 		"7203": {{Name: "Toyota Motor Corporation", Data: months(2000, 2100, 2050, 2200, 2150)}},
 	}
 
-	img, err := render.Render(stocks, "2026-10-30")
+	img, err := render.Render(stocks, "2026-10-30", 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +222,7 @@ func TestRenderDrawsHighLowAndVolume(t *testing.T) {
 func TestRenderWithoutStocksFails(t *testing.T) {
 	t.Parallel()
 
-	_, err := render.Render(map[string][]stock.StockInfo{}, "2026-10-30")
+	_, err := render.Render(map[string][]stock.StockInfo{}, "2026-10-30", 4)
 	if err == nil {
 		t.Fatal("Render of no stocks returned nil")
 	}

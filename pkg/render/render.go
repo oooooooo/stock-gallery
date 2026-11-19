@@ -37,7 +37,6 @@ var (
 )
 
 const (
-	columns     = 4
 	panelWidth  = 640
 	panelHeight = 360
 	headerSize  = 72
@@ -57,7 +56,10 @@ const (
 	legendLine = 24
 )
 
-var errNoStocks = errors.New("no stock data to render")
+var (
+	errNoStocks = errors.New("no stock data to render")
+	errColumns  = errors.New("columns must be 1 or more")
+)
 
 type faces struct {
 	title, label, small font.Face
@@ -150,9 +152,13 @@ func PriceRange(data []stock.StockData) (float64, float64) {
 	return low, high
 }
 
-// Render draws every stock in a grid of four columns, ordered by symbol.
+// Render draws every stock in a grid of the given number of columns, ordered by symbol.
 // date is shown in the header so a reader knows when the data was taken.
-func Render(stocks map[string][]stock.StockInfo, date string) (*image.RGBA, error) {
+func Render(stocks map[string][]stock.StockInfo, date string, columns int) (*image.RGBA, error) {
+	if columns < 1 {
+		return nil, fmt.Errorf("%w: got %d", errColumns, columns)
+	}
+
 	symbols := make([]string, 0, len(stocks))
 
 	for symbol, infos := range stocks {
